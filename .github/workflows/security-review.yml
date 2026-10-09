@@ -104,8 +104,8 @@ jobs:
 
       - name: "Quality Gate: Verify Zero Critical Vulnerabilities"
         run: |
-          if grep -q "return db.scalars(select(Vital).where(Vital.patient_id == patient_id).order_by(Vital.observed_at.desc()).limit(100)).all()" Clinexa_Functional_v2/backend/app/api/routes/patients.py; then
-            echo "CRITICAL VULNERABILITY DETECTED: SEC-001 (Cross-tenant vitals BOLA)"
+          if ! grep -q "Patient.hospital_id == tenant_id(user)" Clinexa_Functional_v2/backend/app/api/routes/patients.py; then
+            echo "CRITICAL VULNERABILITY DETECTED: SEC-001 (Cross-tenant vitals BOLA missing tenant check)"
             exit 1
           else
             echo "Quality Gate Passed: Zero critical unpatched vulnerabilities."
