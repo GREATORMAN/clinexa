@@ -52,7 +52,6 @@ jobs:
       - name: "Stage 2: Setup Flutter SDK"
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: "stable"
           cache: true
 
