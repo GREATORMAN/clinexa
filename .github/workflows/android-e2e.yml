@@ -51,8 +51,12 @@ jobs:
           cache: "gradle"
 
       # Stage 3: Setup Android SDK
-      - name: "Stage 3: Setup Android SDK"
-        uses: android-actions/setup-android@v3
+      - name: "Stage 3: Setup Android SDK Environment"
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> $GITHUB_ENV
+          echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
+          adb version
 
       # Setup Flutter & Node & Python
       - name: "Setup Flutter SDK"
