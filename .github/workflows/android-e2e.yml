@@ -70,13 +70,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: "npm"
 
       - name: "Setup Python ${{ env.PYTHON_VERSION }}"
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: "pip"
 
       # Stage 4: Install Android & Node Dependencies
       - name: "Stage 4: Install Android & Appium Dependencies"
