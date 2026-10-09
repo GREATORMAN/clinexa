@@ -1,14 +1,20 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class Api {
-  static const baseUrl = String.fromEnvironment(
-    'CLINEXA_API_URL',
-    defaultValue: 'http://127.0.0.1:8000',
-  );
+  static String get baseUrl {
+    const envUrl = String.fromEnvironment('CLINEXA_API_URL');
+    if (envUrl.isNotEmpty) return envUrl;
+    if (kIsWeb) {
+      final origin = Uri.base.origin;
+      if (origin.isNotEmpty && origin != 'null') return origin;
+    }
+    return 'http://127.0.0.1:8000';
+  }
 
   static const vault = FlutterSecureStorage();
   static String? _accessToken;
@@ -28,6 +34,7 @@ class Api {
   ));
 
   static Future<void> configure() async {
+    dio.options.baseUrl = baseUrl;
     if (!_configured) {
       _configured = true;
       dio.interceptors.add(InterceptorsWrapper(onError: (error, handler) async {
