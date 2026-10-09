@@ -52,5 +52,7 @@ def add_vital(patient_id: str,payload: VitalCreate,db: Session=Depends(get_db),
     row=Vital(patient_id=patient_id,**payload.model_dump());db.add(row);db.commit();db.refresh(row);return row
 
 @router.get("/{patient_id}/vitals")
-def vitals(patient_id:str,db:Session=Depends(get_db),user:User=Depends(require_permission("patient.clinical.read"))):
-    return db.scalars(select(Vital).where(Vital.patient_id==patient_id).order_by(Vital.observed_at.desc()).limit(100)).all()
+def vitals(patient_id: str, db: Session = Depends(get_db), user: User = Depends(require_permission("patient.clinical.read"))):
+    if not db.scalar(select(Patient).where(Patient.id == patient_id, Patient.hospital_id == tenant_id(user))):
+        raise HTTPException(status_code=404, detail="Patient not found")
+    return db.scalars(select(Vital).where(Vital.patient_id == patient_id).order_by(Vital.observed_at.desc()).limit(100)).all()

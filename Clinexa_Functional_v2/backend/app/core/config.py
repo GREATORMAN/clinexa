@@ -1,3 +1,4 @@
+import secrets
 from functools import lru_cache
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -29,7 +30,7 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def production_configuration(self):
         if self.ENVIRONMENT.lower() in {"production", "prod"}:
-            if self.SECRET_KEY == "development-only-change-me" or len(self.SECRET_KEY) < 32:
+            if self.SECRET_KEY in {"development-only-change-me", "CHANGE_ME_TO_A_LONG_RANDOM_SECRET"} or len(self.SECRET_KEY) < 32:
                 raise ValueError("Production requires a random SECRET_KEY of at least 32 characters")
             if len(self.ENCRYPTION_KEY) < 32:
                 raise ValueError("Production requires a separate ENCRYPTION_KEY of at least 32 characters")
@@ -37,6 +38,8 @@ class Settings(BaseSettings):
                 raise ValueError("Production requires PostgreSQL")
             if not self.cors_origins_list or any(not origin.startswith("https://") for origin in self.cors_origins_list):
                 raise ValueError("Production requires explicit HTTPS CORS origins")
+        elif self.SECRET_KEY in {"development-only-change-me", "CHANGE_ME_TO_A_LONG_RANDOM_SECRET"}:
+            self.SECRET_KEY = secrets.token_urlsafe(32)
         return self
 
     @property

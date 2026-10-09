@@ -18,12 +18,30 @@ router = APIRouter(tags=["Hospital Operations"])
 
 @router.get("/pharmacy/items")
 def pharmacy_items(db: Session = Depends(get_db), user: User = Depends(require_permission("pharmacy.read"))):
-    items = db.scalars(select(PharmacyItem).where(PharmacyItem.hospital_id == tenant_id(user)).order_by(PharmacyItem.name)).all()
-    out = []
-    for item in items:
-        qty = db.scalar(select(func.coalesce(func.sum(InventoryBatch.quantity), 0)).where(InventoryBatch.pharmacy_item_id == item.id)) or 0
-        out.append({"id": item.id, "name": item.name, "form": item.form, "strength": item.strength, "reorder_level": item.reorder_level, "quantity": int(qty), "low_stock": int(qty) <= item.reorder_level})
-    return out
+    h = tenant_id(user)
+    stmt = (
+        select(
+            PharmacyItem,
+            func.coalesce(func.sum(InventoryBatch.quantity), 0).label("quantity")
+        )
+        .outerjoin(InventoryBatch, PharmacyItem.id == InventoryBatch.pharmacy_item_id)
+        .where(PharmacyItem.hospital_id == h)
+        .group_by(PharmacyItem.id)
+        .order_by(PharmacyItem.name)
+    )
+    results = db.execute(stmt).all()
+    return [
+        {
+            "id": item.id,
+            "name": item.name,
+            "form": item.form,
+            "strength": item.strength,
+            "reorder_level": item.reorder_level,
+            "quantity": int(qty),
+            "low_stock": int(qty) <= item.reorder_level
+        }
+        for item, qty in results
+    ]
 
 @router.post("/pharmacy/items", status_code=201)
 def add_item(payload: PharmacyItemCreate, db: Session = Depends(get_db), user: User = Depends(require_permission("pharmacy.manage"))):

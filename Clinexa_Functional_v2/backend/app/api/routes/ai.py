@@ -5,7 +5,7 @@ from app.api.routes.appointments import check_slot
 from app.core.audit import log_action
 from sqlalchemy.orm import Session
 from app.core.database import get_db
-from app.core.dependencies import get_current_user,require_permission,tenant_id
+from app.core.dependencies import get_current_user,require_permission,tenant_id,permission_codes
 from app.models.user import User
 from app.models.clinical import Appointment,Doctor,Patient
 from app.services.ollama_service import status as ollama_status,chat as ollama_chat
@@ -23,6 +23,10 @@ async def status(user:User=Depends(get_current_user)):
 @router.post("/chat")
 async def chat(payload:AiChatRequest,db:Session=Depends(get_db),user:User=Depends(get_current_user)):
     h=tenant_id(user)
+    if payload.patient_id:
+        perms = permission_codes(user)
+        if "*" not in perms and "patient.clinical.read" not in perms:
+            raise HTTPException(status_code=403, detail="Permission 'patient.clinical.read' required to query patient health records via AI")
     return await chat_service(
         message=payload.message,
         patient_id=payload.patient_id,

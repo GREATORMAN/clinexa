@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import secrets
 from datetime import datetime, timedelta
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import select, func, or_
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, require_permission, tenant_id, permission_codes
 from app.core.audit import log_action
+from app.core.rate_limit import limiter
 from app.models.user import User
 from app.models.care_task import CareTask
 from app.models.organization import Department
@@ -124,11 +125,22 @@ def analytics_overview(db: Session = Depends(get_db), user: User = Depends(requi
     occupied_beds = db.scalar(select(func.count()).select_from(Bed).join(Room).join(Ward).where(Ward.hospital_id == h, Bed.status == "occupied")) or 0
     pending_labs = db.scalar(select(func.count()).select_from(LabOrder).where(LabOrder.hospital_id == h, LabOrder.status.in_(["ordered", "collected", "processing"]))) or 0
     unpaid_total = db.scalar(select(func.coalesce(func.sum(Invoice.total_amount), 0)).where(Invoice.hospital_id == h, Invoice.status != "paid")) or 0
-    low_stock = 0
-    for item in db.scalars(select(PharmacyItem).where(PharmacyItem.hospital_id == h)).all():
-        qty = db.scalar(select(func.coalesce(func.sum(InventoryBatch.quantity), 0)).where(InventoryBatch.pharmacy_item_id == item.id)) or 0
-        if int(qty) <= item.reorder_level:
-            low_stock += 1
+    stock_subq = (
+        select(
+            PharmacyItem.id,
+            PharmacyItem.reorder_level,
+            func.coalesce(func.sum(InventoryBatch.quantity), 0).label("total_qty")
+        )
+        .outerjoin(InventoryBatch, PharmacyItem.id == InventoryBatch.pharmacy_item_id)
+        .where(PharmacyItem.hospital_id == h)
+        .group_by(PharmacyItem.id, PharmacyItem.reorder_level)
+        .subquery()
+    )
+    low_stock = db.scalar(
+        select(func.count())
+        .select_from(stock_subq)
+        .where(stock_subq.c.total_qty <= stock_subq.c.reorder_level)
+    ) or 0
     return {
         "patients": int(patient_count),
         "active_doctors": int(doctor_count),
@@ -197,7 +209,10 @@ def revoke_band(band_id: str, db: Session = Depends(get_db), user: User = Depend
 
 
 @router.get("/emergency/public/{token}")
-def public_emergency_card(token: str, source: str | None = None, db: Session = Depends(get_db)):
+def public_emergency_card(token: str, request: Request, source: str | None = None, db: Session = Depends(get_db)):
+    ip = request.client.host if request.client else "unknown"
+    if not limiter.allow((ip, "public_emergency"), 30, 60):
+        raise HTTPException(status_code=429, detail="Too many emergency card requests. Try again in one minute.")
     band = db.scalar(select(NfcBand).where(NfcBand.token == token, NfcBand.active == True))
     if not band:
         raise HTTPException(status_code=404, detail="Emergency token is invalid or revoked")

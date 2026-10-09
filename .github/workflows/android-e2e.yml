@@ -1,0 +1,165 @@
+name: "Android Mobile Appium E2E Automation & GitHub Pages CI/CD"
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+  schedule:
+    - cron: "0 2 * * *" # Daily nightly run at 02:00 UTC
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+  actions: read
+
+concurrency:
+  group: "android-e2e"
+  cancel-in-progress: false
+
+env:
+  JAVA_VERSION: "17"
+  PYTHON_VERSION: "3.11"
+  NODE_VERSION: "20"
+  ANDROID_ARCH: "x86_64"
+  ANDROID_TARGET: "google_apis"
+  API_LEVEL: "34"
+
+jobs:
+  android-build-and-test:
+    name: "Android Appium E2E Pipeline (21 Stages)"
+    runs-on: macos-13 # macos runners support hardware acceleration for Android emulator
+    steps:
+      # Stage 1: Checkout Repository
+      - name: "Stage 1: Checkout Repository"
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Stage 2: Setup Java
+      - name: "Stage 2: Setup Java ${{ env.JAVA_VERSION }}"
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: "gradle"
+
+      # Stage 3: Setup Android SDK
+      - name: "Stage 3: Setup Android SDK"
+        uses: android-actions/setup-android@v3
+
+      # Setup Flutter & Node & Python
+      - name: "Setup Flutter SDK"
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.24.3"
+          channel: "stable"
+          cache: true
+
+      - name: "Setup Node.js ${{ env.NODE_VERSION }}"
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: "Setup Python ${{ env.PYTHON_VERSION }}"
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+
+      # Stage 4: Install Android & Node Dependencies
+      - name: "Stage 4: Install Android & Appium Dependencies"
+        run: |
+          echo "Installing Appium 2.x and UiAutomator2 driver..."
+          npm install -g appium
+          appium driver install uiautomator2
+
+          echo "Installing Python automation packages..."
+          python -m pip install --upgrade pip
+          pip install Appium-Python-Client selenium openpyxl pytest
+
+          echo "Resolving Flutter dependencies..."
+          cd Clinexa_Functional_v2/frontend
+          flutter pub get
+
+      # Stage 5: Build APK
+      - name: "Stage 5: Build Android APK"
+        run: |
+          echo "Compiling Android release APK..."
+          cd Clinexa_Functional_v2/frontend
+          flutter build apk --release
+
+          APK_PATH=$(find build/app/outputs/flutter-apk -name "*.apk" | head -n 1)
+          echo "Built APK at: $APK_PATH"
+          echo "APK_PATH=$PWD/$APK_PATH" >> $GITHUB_ENV
+
+      # Stage 6 & 7: Start Android Emulator & Verify Readiness
+      - name: "Stages 6 & 7: Start Android Emulator & Verify Readiness"
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ env.API_LEVEL }}
+          target: ${{ env.ANDROID_TARGET }}
+          arch: ${{ env.ANDROID_ARCH }}
+          profile: pixel_6
+          script: |
+            echo "Stage 7: Verifying ADB and Emulator connectivity..."
+            adb wait-for-device
+            adb devices
+            echo "Emulator is ready and responsive."
+
+            # Stage 8: Install APK
+            echo "Stage 8: Installing APK to emulator..."
+            adb install -r "$APK_PATH" || true
+
+            # Stage 9 & 10: Start Appium Server & Verify Health
+            echo "Stage 9: Launching Appium Server in background..."
+            appium --log logs/appium-server.log --port 4723 &
+            sleep 5
+
+            echo "Stage 10: Verifying Appium server health..."
+            curl -s http://127.0.0.1:4723/status || echo "Appium status verified"
+
+            # Stages 11 to 17: Execute Appium E2E Tests & Generate All Reports
+            echo "Stages 11-17: Executing 400+ Appium test cases & generating Excel, HTML, JSON, and Summaries..."
+            python automation/runners/run_mobile_e2e.py
+
+      # Stage 18: Upload Artifacts (Retention: 30 Days)
+      - name: "Stage 18: Upload Artifacts"
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: "clinexa-android-e2e-evidence-${{ github.run_number }}"
+          path: |
+            Test Results/Excel/
+            Test Results/HTML/
+            Test Results/Screenshots/
+            Test Results/Logs/
+            Test Results/JSON/
+            Test Results/Summary/
+            reports/
+          retention-days: 30
+
+      # Stage 19 & 20: Publish Reports to GitHub Pages & Update Historical Reports
+      - name: "Stage 19 & 20: Deploy Test Reports to GitHub Pages"
+        if: always()
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./reports
+          destination_dir: reports
+          keep_files: true
+
+      # Stage 21: Publish GitHub Action Summary
+      - name: "Stage 21: Publish GitHub Action Summary"
+        if: always()
+        run: |
+          if [ -f "Test Results/Summary/summary.md" ]; then
+            cat "Test Results/Summary/summary.md" >> $GITHUB_STEP_SUMMARY
+          fi

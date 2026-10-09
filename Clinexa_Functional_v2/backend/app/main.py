@@ -12,9 +12,12 @@ async def security_headers(request,call_next):
     response=await call_next(request)
     response.headers["X-Content-Type-Options"]="nosniff"
     response.headers["X-Frame-Options"]="DENY"
-    response.headers["Referrer-Policy"]="no-referrer"
-    response.headers["Cache-Control"]="no-store"
-    if request.url.scheme == "https": response.headers["Strict-Transport-Security"]="max-age=31536000"
+    response.headers["Referrer-Policy"]="strict-origin-when-cross-origin"
+    response.headers["Cache-Control"]="no-store, no-cache, must-revalidate"
+    response.headers["Content-Security-Policy"]="default-src 'self'; img-src 'self' data: https:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none';"
+    proto = request.headers.get("x-forwarded-proto", request.url.scheme)
+    if proto == "https":
+        response.headers["Strict-Transport-Security"]="max-age=31536000; includeSubDomains"
     return response
 app.include_router(system.router)
 for router in [auth.router,patients.router,doctors.router,appointments.router,records.router,documents.router,communications.router,operations.router,ai.router,admin.router,advanced.router,portal.router,doctor_portal.router,care_tasks.router,clinical_workspace.router,lab_workspace.router,session_security.router,mfa.router,recovery.router,privacy.router]:

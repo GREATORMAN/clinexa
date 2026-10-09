@@ -2,7 +2,8 @@ from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
-from jose import jwt, JWTError
+import jwt
+from jwt.exceptions import PyJWTError
 from app.core.config import get_settings
 
 settings = get_settings()
@@ -34,5 +35,5 @@ def create_refresh_token(subject: str, token_id: str) -> str:
 def decode_token(token: str) -> dict:
     try:
         return jwt.decode(token, settings.SECRET_KEY, algorithms=[ALGORITHM])
-    except JWTError as exc:
+    except PyJWTError as exc:
         raise ValueError("Invalid or expired token") from exc
