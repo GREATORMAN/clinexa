@@ -33,10 +33,11 @@ for router in [auth.router,patients.router,doctors.router,appointments.router,re
 
 from pathlib import Path
 from fastapi.staticfiles import StaticFiles
-# Locate frontend web directory (works locally, in webapp folder, and inside Docker)
+
+# Candidate directories for web frontend:
 candidate_dirs = [
+    Path(__file__).resolve().parent.parent.parent / "frontend",
     Path(__file__).resolve().parent.parent / "frontend",
-    Path(__file__).resolve().parent.parent.parent / "webapp" / "frontend",
     Path(__file__).resolve().parent.parent.parent / "frontend" / "build" / "web",
 ]
 web_dir = next((d for d in candidate_dirs if d.is_dir() and (d / "index.html").is_file()), None)
@@ -46,5 +47,3 @@ if web_dir:
 else:
     @app.get("/")
     def root(): return {"name": "Clinexa", "version": "9.0.0", "docs": "/docs"}
-
-

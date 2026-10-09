@@ -18,7 +18,8 @@ backend/.env
 *.db
 *.sqlite
 *.sqlite3
-backend/clinexa_dev.db
+# backend/clinexa_dev.db
+!backend/clinexa_dev.db
 backend/test_clinexa.db
 backend/storage/*
 !backend/storage/.gitkeep

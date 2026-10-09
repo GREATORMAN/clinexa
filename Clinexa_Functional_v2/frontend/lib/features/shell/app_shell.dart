@@ -86,7 +86,7 @@ class _AppShellState extends State<AppShell> {
       _Destination('medicines', 'Medicine Centre', Icons.medication_rounded, MedicineCentrePage(), visible: Api.can('patient.clinical.read'), group: 'Care'),
       _Destination('patients', 'Patients', Icons.group_rounded, PatientsPage(), visible: _hasAny(_clinicalRoles.union(_frontDeskRoles)), group: 'Care'),
       _Destination('appointments', 'Appointments', Icons.calendar_month_rounded, AppointmentsPage(), visible: _hasAny(_clinicalRoles.union(_frontDeskRoles)), group: 'Care'),
-      _Destination('doctors', 'Doctors', Icons.medical_services_rounded, DoctorsPage(), visible: _hasAny(_clinicalRoles.union(_frontDeskRoles)), group: 'Care'),
+      _Destination('doctors', 'Doctors', Icons.medical_services_rounded, DoctorsPage(), visible: _isAdmin, group: 'Care'),
       _Destination('records', 'Clinical records', Icons.folder_copy_rounded, RecordsPage(), visible: _hasAny(_clinicalRoles), group: 'Clinical'),
       _Destination('documents', 'Documents & OCR', Icons.document_scanner_rounded, DocumentsPage(), visible: _hasAny(_clinicalRoles.union(_labRoles)), group: 'Clinical'),
       _Destination('pharmacy', 'Pharmacy', Icons.local_pharmacy_rounded, PharmacyWorkspacePage(), visible: _hasAny(_pharmacyRoles), group: 'Operations'),
