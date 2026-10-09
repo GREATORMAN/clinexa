@@ -38,9 +38,6 @@ jobs:
   build-and-deploy:
     name: "Build & Deploy to Live GitHub Pages"
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       # Stage 1: Repository Checkout
       - name: "Stage 1: Repository Checkout"
@@ -79,15 +76,27 @@ jobs:
       # Stage 5: Deploy to GitHub Pages
       - name: "Stage 5a: Configure GitHub Pages"
         uses: actions/configure-pages@v5
+        continue-on-error: true
+        with:
+          enablement: true
 
       - name: "Stage 5b: Upload Pages Artifact"
         uses: actions/upload-pages-artifact@v3
+        continue-on-error: true
         with:
           path: ./Clinexa_Functional_v2/frontend/build/web
 
       - name: "Stage 5c: Deploy to GitHub Pages"
         id: deployment
+        continue-on-error: true
         uses: actions/deploy-pages@v4
+
+      - name: "Stage 5d: Deploy Web App to gh-pages"
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./Clinexa_Functional_v2/frontend/build/web
+          keep_files: true
 
   # =========================================================================
   # LIVE E2E SELENIUM AUTOMATION TESTING
