@@ -20,8 +20,8 @@ permissions:
   actions: read
 
 concurrency:
-  group: "android-e2e"
-  cancel-in-progress: false
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   JAVA_VERSION: "17"
