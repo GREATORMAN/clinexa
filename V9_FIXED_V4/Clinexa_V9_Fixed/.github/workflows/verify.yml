@@ -1,0 +1,28 @@
+name: Clinexa verification
+on: [push, pull_request]
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install -r backend/requirements.txt -c backend/constraints-tested.txt
+      - run: python -m compileall -q backend/app
+      - run: python -m pytest tests -q
+        working-directory: backend
+  flutter:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with: {channel: stable, cache: true}
+      - run: python3 scripts/configure_native_v9.py
+      - run: flutter pub get
+        working-directory: frontend
+      - run: flutter analyze --no-fatal-infos --no-fatal-warnings
+        working-directory: frontend
+      - run: flutter test
+        working-directory: frontend
+      - run: flutter build web --release
+        working-directory: frontend

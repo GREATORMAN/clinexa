@@ -1,0 +1,29 @@
+{
+  "name": "Clinexa V4 Advanced",
+  "version": "4.0.0",
+  "generated": "2026-10-01",
+  "backend_python_compile": true,
+  "seed_test": {
+    "doctors": 6,
+    "patients": 8,
+    "emergency_profiles": 4,
+    "medication_schedules": 4,
+    "lab_orders": 4
+  },
+  "major_features": [
+    "Patient 360",
+    "Android NFC read/write",
+    "QR emergency fallback",
+    "emergency access audit",
+    "advanced ops",
+    "lab order lifecycle",
+    "teleconsultation sessions",
+    "medication schedules",
+    "symptom tracker",
+    "insurance",
+    "global search",
+    "analytics",
+    "biometric app lock",
+    "Ollama patient summary"
+  ]
+}

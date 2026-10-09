@@ -1,0 +1,32 @@
+{
+  "name": "Clinexa Functional v2",
+  "total_files": 125,
+  "python_files": 43,
+  "dart_files": 16,
+  "frontend_workflows": [
+    "patients",
+    "vitals",
+    "timeline",
+    "doctors",
+    "departments",
+    "availability",
+    "appointments",
+    "queue/status",
+    "reschedule",
+    "encounters",
+    "prescriptions",
+    "labs",
+    "documents",
+    "ocr verification",
+    "ollama chat",
+    "AI confirmed booking",
+    "messages",
+    "pharmacy",
+    "inventory",
+    "billing",
+    "wards/rooms/beds",
+    "admissions/discharge"
+  ],
+  "python_syntax_validation": "passed",
+  "notes": "Flutter compilation must run on a Flutter SDK host; obsolete lucide_icons dependency removed."
+}

@@ -1,0 +1,47 @@
+# Archives & Backups (>100MB blocks GitHub)
+*.zip
+*.tar.gz
+*.rar
+*.7z
+**/backups/
+backups/
+
+# Python & Virtual Environments
+**/__pycache__/
+*.py[cod]
+*$py.class
+**/.pytest_cache/
+**/.venv/
+**/venv/
+**/env/
+
+# Databases & Environment Variables
+*.db
+*.sqlite
+*.sqlite3
+**/*.db
+**/*.sqlite
+.env
+*.env
+**/.env
+*.pem
+*.key
+
+# Flutter & Dart Build Outputs & Caches
+**/build/
+build/
+**/.dart_tool/
+.dart_tool/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/.packages
+**/windows/flutter/ephemeral/
+**/.gradle/
+**/local.properties
+
+# OS & IDE
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log

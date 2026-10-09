@@ -1,0 +1,49 @@
+# Python & Virtual Environments
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.venv/
+env/
+venv/
+
+# Environment Variables & Secrets
+.env
+*.env
+backend/.env
+*.pem
+*.key
+
+# SQLite & Databases
+*.db
+*.sqlite
+*.sqlite3
+backend/clinexa_dev.db
+backend/test_clinexa.db
+backend/storage/*
+!backend/storage/.gitkeep
+
+# Large Archives & Local Backups (> 100MB breaks GitHub push)
+*.zip
+*.tar.gz
+*.rar
+*.7z
+backups/
+V5_LOCAL_BACKUP/
+
+# Flutter & Dart
+frontend/.dart_tool/
+frontend/build/
+frontend/.flutter-plugins
+frontend/.flutter-plugins-dependencies
+frontend/.packages
+frontend/windows/flutter/ephemeral/
+frontend/android/.gradle/
+frontend/android/local.properties
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log

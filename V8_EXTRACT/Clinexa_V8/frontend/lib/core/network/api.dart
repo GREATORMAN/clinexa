@@ -1,0 +1,143 @@
+import 'dart:convert';
+
+import 'package:dio/dio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+class Api {
+  static const baseUrl = String.fromEnvironment(
+    'CLINEXA_API_URL',
+    defaultValue: 'http://127.0.0.1:8000',
+  );
+
+  static String? _accessToken;
+  static Future<void>? _refreshing;
+  static bool _configured = false;
+
+  static bool can(String permission) => hasAnyRole(['Super Administrator']) ||
+      (List<String>.from((currentUser?['permissions'] as List?) ?? const []).contains(permission) ||
+       List<String>.from((currentUser?['permissions'] as List?) ?? const []).contains('*'));
+  static Map<String, dynamic>? currentUser;
+
+  static final Dio dio = Dio(BaseOptions(
+    baseUrl: baseUrl,
+    connectTimeout: const Duration(seconds: 10),
+    receiveTimeout: const Duration(seconds: 120),
+    headers: {'Accept': 'application/json'},
+  ));
+
+  static Future<void> configure() async {
+    if (!_configured) {
+      _configured = true;
+      dio.interceptors.add(InterceptorsWrapper(onError: (error, handler) async {
+        final request = error.requestOptions;
+        if (error.response?.statusCode != 401 || ['/auth/login', '/auth/register', '/auth/refresh'].any(request.path.endsWith) ||
+            request.extra['retried'] == true) {
+          handler.next(error);
+          return;
+        }
+        try {
+          // One rotating refresh token is shared by simultaneous requests.
+          _refreshing ??= _refreshSession();
+          await _refreshing;
+          request.extra['retried'] = true;
+          if (request.data is FormData) request.data = (request.data as FormData).clone();
+          request.headers['Authorization'] = 'Bearer $_accessToken';
+          handler.resolve(await dio.fetch<dynamic>(request));
+        } catch (_) {
+          handler.next(error);
+        }
+      }));
+    }
+    final prefs = await SharedPreferences.getInstance();
+    _accessToken = prefs.getString('access_token');
+    final cachedUser = prefs.getString('current_user');
+    if (cachedUser != null) {
+      try {
+        currentUser = Map<String, dynamic>.from(jsonDecode(cachedUser) as Map);
+      } catch (_) {
+        currentUser = null;
+      }
+    }
+    if (_accessToken != null) {
+      dio.options.headers['Authorization'] = 'Bearer $_accessToken';
+    }
+  }
+
+  static Future<void> _refreshSession() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('refresh_token');
+      if (token == null) throw StateError('Sign in again to continue.');
+      final client = Dio(BaseOptions(baseUrl: baseUrl,
+          connectTimeout: const Duration(seconds: 10), receiveTimeout: const Duration(seconds: 15)));
+      try {
+        final response = await client.post('/api/v1/auth/refresh', data: {'refresh_token': token});
+        // Do not revive a session that was signed out while refresh was running.
+        if (prefs.getString('refresh_token') == token) {
+          await saveTokens(Map<String, dynamic>.from(response.data as Map));
+        } else {
+          throw StateError('Session ended.');
+        }
+      } on DioException catch (e) {
+        if (e.response?.statusCode == 401) await logout();
+        rethrow;
+      } finally {
+        client.close();
+      }
+    } finally {
+      _refreshing = null;
+    }
+  }
+
+  static Future<void> saveTokens(Map<String, dynamic> data) async {
+    final prefs = await SharedPreferences.getInstance();
+    _accessToken = data['access_token'] as String;
+    await prefs.setString('access_token', _accessToken!);
+    await prefs.setString('refresh_token', data['refresh_token'] as String);
+    dio.options.headers['Authorization'] = 'Bearer $_accessToken';
+  }
+
+  static Future<Map<String, dynamic>> loadProfile() async {
+    final response = await dio.get('/api/v1/auth/me');
+    currentUser = Map<String, dynamic>.from(response.data as Map);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('current_user', jsonEncode(currentUser));
+    return currentUser!;
+  }
+
+  static List<String> get roles =>
+      List<String>.from((currentUser?['roles'] as List?) ?? const <String>[]);
+
+  static bool hasAnyRole(Iterable<String> names) {
+    final normalized = roles.map((e) => e.toLowerCase()).toSet();
+    return names.any((name) => normalized.contains(name.toLowerCase()));
+  }
+
+  static Map<String, String> get authHeaders =>
+      _accessToken == null ? const {} : {'Authorization': 'Bearer $_accessToken'};
+
+  static Future<void> logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('access_token');
+    await prefs.remove('refresh_token');
+    await prefs.remove('current_user');
+    _accessToken = null;
+    currentUser = null;
+    dio.options.headers.remove('Authorization');
+  }
+
+  static String errorMessage(Object error) {
+    if (error is DioException) {
+      final data = error.response?.data;
+      if (error.response?.statusCode == 401) return 'Your session has ended. Sign in again to continue.';
+      if (data is Map && data['detail'] is List) {
+        return (data['detail'] as List).map((x) => x is Map ? x['msg']?.toString() ?? 'Invalid value' : x.toString()).join(' • ');
+      }
+      if (data is Map && data['detail'] != null) return data['detail'].toString();
+      if (error.type == DioExceptionType.connectionError || error.response == null) {
+        return 'Cannot reach the Clinexa backend. Keep FastAPI running and check the phone USB connection.';
+      }
+    }
+    return error.toString();
+  }
+}

@@ -1,0 +1,27 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: clinexa-postgres
+    environment:
+      POSTGRES_DB: clinexa
+      POSTGRES_USER: clinexa
+      POSTGRES_PASSWORD: clinexa_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - clinexa_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U clinexa -d clinexa"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  redis:
+    image: redis:7-alpine
+    container_name: clinexa-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - clinexa_redis:/data
+volumes:
+  clinexa_pgdata:
+  clinexa_redis:

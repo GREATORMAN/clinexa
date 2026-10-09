@@ -1,0 +1,12 @@
+import 'package:flutter/material.dart';
+import '../../core/network/api.dart';
+class RecoveryPage extends StatefulWidget{
+  const RecoveryPage({super.key});
+  @override State<RecoveryPage> createState()=>_RecoveryPageState();
+}
+class _RecoveryPageState extends State<RecoveryPage>{
+  final email=TextEditingController(),token=TextEditingController(),password=TextEditingController();bool busy=false,reset=false;String? message,error;
+  @override void dispose(){email.dispose();token.dispose();password.dispose();super.dispose();}
+  Future<void> submit()async{setState((){busy=true;error=null;message=null;});try{final r=await Api.dio.post(reset?'/api/v1/auth/reset-password':'/api/v1/auth/forgot-password',data:reset?{'token':token.text.trim(),'password':password.text}:{'email':email.text.trim()});if(mounted)setState(()=>message=r.data['message']);}catch(e){if(mounted)setState(()=>error=Api.errorMessage(e));}finally{if(mounted)setState(()=>busy=false);}}
+  @override Widget build(BuildContext context)=>Scaffold(appBar:AppBar(title:const Text('Password recovery')),body:Center(child:SingleChildScrollView(padding:const EdgeInsets.all(24),child:ConstrainedBox(constraints:const BoxConstraints(maxWidth:480),child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[const Icon(Icons.lock_reset,size:56),const SizedBox(height:24),Text(reset?'Choose a new password.':'Get back to your care.',style:Theme.of(context).textTheme.headlineMedium),const SizedBox(height:12),Text(reset?'Paste the token from your reset email.':'Enter your account email to request a reset token.'),const SizedBox(height:24),if(!reset)TextField(controller:email,keyboardType:TextInputType.emailAddress,decoration:const InputDecoration(labelText:'Email'))else...[TextField(controller:token,decoration:const InputDecoration(labelText:'Reset token')),const SizedBox(height:16),TextField(controller:password,obscureText:true,decoration:const InputDecoration(labelText:'New password',helperText:'At least 10 characters'))],const SizedBox(height:20),if(error!=null)Text(error!,style:TextStyle(color:Theme.of(context).colorScheme.error)),if(message!=null)Text(message!),const SizedBox(height:16),FilledButton(onPressed:busy?null:submit,child:Text(busy?'Working…':reset?'Reset password':'Send reset email')),TextButton(onPressed:busy?null:()=>setState((){reset=!reset;error=null;message=null;}),child:Text(reset?'Request a reset email':'I already have a reset token'))])))));
+}
