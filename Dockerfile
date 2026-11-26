@@ -23,10 +23,11 @@ COPY Clinexa_Functional_v2/webapp/frontend ./frontend
 
 RUN useradd --uid 10001 --create-home clinexa \
     && mkdir -p /app/storage \
+    && ln -s /run/secrets/clinexa/env /app/.env \
     && chown -R clinexa:clinexa /app
 USER clinexa
 
 EXPOSE 8080
 
 # Stop on migration errors rather than launching against an invalid schema.
-CMD ["sh", "-c", "python -m app.cli.migrate && exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080} --workers 1"]
+CMD ["sh", "-c", "python -m app.cli.migrate && python -m app.cli.bootstrap_cloud && exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080} --workers 1"]
