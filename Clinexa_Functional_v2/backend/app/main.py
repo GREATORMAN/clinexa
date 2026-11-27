@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import get_settings
 from app.api.routes import system,auth,patients,doctors,appointments,records,documents,communications,operations,ai,admin,advanced,portal,doctor_portal,care_tasks,clinical_workspace,lab_workspace,session_security,mfa,recovery,privacy
 from app.core.rate_limit import middleware as rate_limit
+from app.api.routes import local_ai_bridge
 settings=get_settings()
 app=FastAPI(title="Clinexa API",version="9.0.0",description="Clinexa healthcare and hospital management API")
 app.middleware("http")(rate_limit)
@@ -28,6 +29,7 @@ async def security_headers(request,call_next):
         response.headers["Strict-Transport-Security"]="max-age=31536000; includeSubDomains"
     return response
 app.include_router(system.router)
+app.include_router(local_ai_bridge.router, prefix=settings.API_V1_PREFIX)
 for router in [auth.router,patients.router,doctors.router,appointments.router,records.router,documents.router,communications.router,operations.router,ai.router,admin.router,advanced.router,portal.router,doctor_portal.router,care_tasks.router,clinical_workspace.router,lab_workspace.router,session_security.router,mfa.router,recovery.router,privacy.router]:
     app.include_router(router,prefix=settings.API_V1_PREFIX)
 
