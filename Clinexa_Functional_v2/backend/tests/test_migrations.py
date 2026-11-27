@@ -12,7 +12,7 @@ def test_fresh_migrations_match_schema(tmp_path):
     path=tmp_path/'fresh.db';command.upgrade(config(path),'head');engine=create_engine('sqlite:///'+str(path))
     with engine.connect() as c:
         assert set(Base.metadata.tables).issubset(set(inspect(c).get_table_names()))
-        assert c.scalar(text('select version_num from alembic_version'))=='0002_v9'
+        assert c.scalar(text('select version_num from alembic_version'))=='0003_local_ai'
         assert c.scalar(text("select count(*) from sqlite_master where type='trigger' and name like 'clinical_revision_%'"))==2
     engine.dispose()
 def test_v8_to_v9_preserves_existing_rows(tmp_path):
@@ -35,7 +35,7 @@ def test_adopted_current_schema_installs_missing_revision_guards(tmp_path,monkey
     monkeypatch.setattr(module,'engine',engine)
     module.migrate();module.migrate()
     with engine.connect() as c:
-        assert c.scalar(text('select version_num from alembic_version'))=='0002_v9'
+        assert c.scalar(text('select version_num from alembic_version'))=='0003_local_ai'
         assert c.scalar(text("select count(*) from sqlite_master where type='trigger' and name like 'clinical_revision_%'"))==2
     engine.dispose()
 
@@ -49,5 +49,5 @@ def test_legacy_adoption_preserves_data(tmp_path,monkeypatch):
     monkeypatch.setattr(module,'engine',engine);module.migrate()
     with engine.connect() as c:
         assert c.scalar(text("select name from hospitals where id='h'"))=='Preserved hospital'
-        assert c.scalar(text('select version_num from alembic_version'))=='0002_v9'
+        assert c.scalar(text('select version_num from alembic_version'))=='0003_local_ai'
     engine.dispose()
