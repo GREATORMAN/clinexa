@@ -8,6 +8,7 @@ from sqlalchemy import inspect,MetaData,text
 from app.core.database import engine,Base
 import app.models
 NEW_TABLES={'clinical_drafts','clinical_revisions','workspace_records','device_sessions','mfa_factors','recovery_tickets','notification_preferences','caregiver_grants','background_jobs','dose_receipts'}
+BRIDGE_TABLES={'local_ai_workers','local_ai_requests'}
 def revision_guards(connection):
     """Ensure protection also exists on verified schemas adopted without DDL."""
     if connection.dialect.name=='sqlite':
@@ -25,12 +26,20 @@ def migrate():
         tables=set(inspect(connection).get_table_names())
         if tables and 'alembic_version' not in tables:
             metadata=Base.metadata
+            if tables.intersection(BRIDGE_TABLES) and not BRIDGE_TABLES.issubset(tables):
+                raise RuntimeError('Partial local AI schema detected. No version was stamped.')
             if not tables.intersection(NEW_TABLES):
                 metadata=MetaData()
                 for t in Base.metadata.sorted_tables:
-                    if t.name not in NEW_TABLES:t.to_metadata(metadata)
+                    if t.name not in NEW_TABLES | BRIDGE_TABLES:t.to_metadata(metadata)
                 version='0001_v8'
-            elif NEW_TABLES.issubset(tables):version='0002_v9'
+            elif NEW_TABLES.issubset(tables):
+                if BRIDGE_TABLES.issubset(tables):version='0003_local_ai'
+                else:
+                    metadata=MetaData()
+                    for t in Base.metadata.sorted_tables:
+                        if t.name not in BRIDGE_TABLES:t.to_metadata(metadata)
+                    version='0002_v9'
             else:raise RuntimeError('Partial V9 schema detected. Keep the backup and resolve schema differences before migration.')
             differences=compare_metadata(MigrationContext.configure(connection),metadata)
             if differences:raise RuntimeError('Legacy database differs from the expected schema. Run the backed-up legacy upgrades, then retry. No version was stamped.')
