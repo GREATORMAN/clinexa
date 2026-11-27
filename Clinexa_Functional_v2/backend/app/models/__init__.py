@@ -14,3 +14,4 @@ from app.models.catalog import MedicationCatalogItem, PharmacyRequest, PharmacyR
 
 from app.models.care_task import CareTask
 from app.models.workspace import ClinicalDraft, ClinicalRevision, WorkspaceRecord, DeviceSession, MfaFactor, RecoveryTicket, NotificationPreference, CaregiverGrant, Job, DoseReceipt
+from app.models.local_ai import LocalAIWorker, LocalAIRequest

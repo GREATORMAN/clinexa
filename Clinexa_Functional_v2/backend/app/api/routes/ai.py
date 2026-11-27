@@ -11,18 +11,21 @@ from app.models.clinical import Appointment,Doctor,Patient
 from app.services.ollama_service import status as ollama_status,chat as ollama_chat
 from app.services.clinical_ai_service import chat_service
 from app.schemas.domain import AiChatRequest,AiBookProposal
+from app.core.rate_limit import limiter
 router=APIRouter(prefix="/ai",tags=["Local AI"])
 
 @router.get("/status")
 async def status(user:User=Depends(get_current_user)):
-    st = await ollama_status()
+    st = await ollama_status(tenant_id(user))
     st["engine"] = "Clinexa Clinical Decision Support & Guardrail Sentinel"
-    st["engine_online"] = True
+    st["engine_online"] = st["online"]
     return st
 
 @router.post("/chat")
 async def chat(payload:AiChatRequest,db:Session=Depends(get_db),user:User=Depends(get_current_user)):
     h=tenant_id(user)
+    if not limiter.allow((user.id, "ai.chat"), 10, 60):
+        raise HTTPException(429, "AI request limit reached. Try again in one minute.")
     if payload.patient_id:
         perms = permission_codes(user)
         if "*" not in perms and "patient.clinical.read" not in perms:
@@ -78,4 +81,4 @@ async def patient_summary(patient_id: str, db: Session = Depends(get_db), user: 
         "Summarize only the supplied authorized record. Separate: key record facts, recent changes, and follow-up items already documented. "
         "Do not diagnose, prescribe, recommend dose changes, or invent missing data. Clearly say when information is not recorded."
     )
-    return await ollama_chat(instruction, context)
+    return await ollama_chat(instruction, context, hospital_id=h)
